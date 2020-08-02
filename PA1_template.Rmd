@@ -1,25 +1,217 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Course Project 1"
+author: "Ronald"
+date: "01 Aug 2020"
+output: html_document
+keep_md: true
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the “quantified self” movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
 
 
 ## Loading and preprocessing the data
 
+```{r Read dataset}
+#Load Libraries
+library(tidyverse)
 
+#Read csv
+activity <- read.csv("activity.csv")
+
+#Convert to date
+activity$date <- as.Date(activity$date, "%Y-%m-%d")
+
+#View dataset structure
+str(activity)
+
+```
 
 ## What is mean total number of steps taken per day?
 
+### Calculate the total number of steps taken per day
 
+```{r}
+
+#Aggregate data
+agg_sum <- aggregate(steps ~ date, activity, sum)
+
+#View data
+head(agg_sum)
+
+```
+
+
+### Histogram of the total number of steps taken each day
+
+```{r}
+
+#Plot Histogram
+ggplot(agg_sum, aes(steps)) + 
+  ggtitle("Histogram of Total Number of Steps Taken per Day") +
+  xlab("Steps") +
+  ylab("Frequency") +
+  geom_histogram(binwidth = 2000, 
+                 color = "Dark Olive Green", 
+                 fill = "darkolivegreen4")
+
+```
+
+### Calculate and report the mean and median of the total number of steps taken per day
+
+```{r}
+
+#Mean steps
+mean(agg_sum$steps)
+
+#Median steps
+median(agg_sum$steps)
+
+```
 
 ## What is the average daily activity pattern?
 
+### Time series plot of the average number of steps taken
 
+```{r}
+
+#Aggregate Data
+agg_mean <- aggregate(steps ~ interval, activity, mean)
+
+#Plot Histogram
+ggplot(agg_mean, aes(x = interval, y = steps)) + 
+  ggtitle("Average Daily Activity Pattern") +
+  xlab("Interval") +
+  ylab("Steps") +
+  geom_line(color = "darkolivegreen4")
+
+```
+
+### The 5-minute interval that, on average, contains the maximum number of steps
+
+```{r}
+
+#Find the interval with max steps
+agg_mean$interval[agg_mean$steps == max(agg_mean$steps)]
+
+```
 
 ## Imputing missing values
 
+### Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with \color{red}{\verb|NA|}NAs)
+
+```{r Count the no. of NA}
+
+#Count the no. of NA
+sum(is.na(activity$steps))
+
+```
+
+### Impute missing values using the mean for that 5-minute interval
+
+```{r}
+
+#Create new dataframe for imputed data
+activity_imputed <- activity
+
+#Look for the mean for that 5-minute interval
+join_data <- left_join(activity, agg_mean, by = "interval")
+
+#Replace NAs
+activity_imputed$steps[is.na(activity_imputed$steps)] <- join_data$steps.y[is.na(join_data$steps.x)]
+
+#View data
+head(activity_imputed)
+
+```
+
+
+### Histogram of the total number of steps taken each day
+
+```{r}
+
+#Aggregate data
+agg_imputed_sum <- aggregate(steps ~ date, activity_imputed, sum)
+
+#Plot Histogram
+ggplot(agg_imputed_sum, aes(steps)) + 
+  ggtitle("Histogram of Total Number of Steps Taken per Day") +
+  xlab("Steps") +
+  ylab("Frequency") +
+  geom_histogram(binwidth = 2000, 
+                 color = "Dark Olive Green", 
+                 fill = "darkolivegreen4")
+
+```
+
+
+### Report the mean and median total number of steps taken per day
+
+```{r}
+
+#Calculate Mean
+mean(agg_imputed_sum$steps)
+
+#Calculate Median
+median(agg_imputed_sum$steps)
+
+```
+
+### Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+```{r}
+
+#Change in  Mean
+mean(agg_imputed_sum$steps) - mean(agg_sum$steps)
+
+#Change in Median
+median(agg_imputed_sum$steps) - median(agg_sum$steps)
+
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+### Create a new factor variable in the dataset with two levels – “weekday” and “weekend”
+
+```{r}
+
+#Translate date to weekdays
+activity_imputed$weekday <- weekdays(activity_imputed$date)
+
+#Filter out weekends
+activity_imputed$weekday [activity_imputed$weekday == "Sunday" | activity_imputed$weekday == "Saturday"] <- "weekend"
+
+#Filter out weekdays
+activity_imputed$weekday [activity_imputed$weekday != "weekend"] <- "weekday"
+
+#View data
+head(activity_imputed)
+
+```
+
+
+### 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis)
+
+```{r}
+
+#Aggregate data
+agg_wkday <- aggregate(steps ~ interval + weekday, activity_imputed, mean)
+
+#Plot line graph
+ggplot(agg_wkday, aes(x = interval, y = steps)) + 
+  ggtitle("Weekday & Weekend Average Daily Activity Pattern") +
+  xlab("Interval") +
+  ylab("Steps") +
+  geom_line(color = "darkolivegreen4") + 
+  facet_grid(weekday ~ .,)
+
+```
+
